@@ -95,6 +95,62 @@ CREATE TABLE xoken.txid_outputs (
   return 0;
 }
 
+int select_txid_outputs( const char* txid, int output_index){
+  CassError rc = CASS_OK;
+  CassStatement* statement = NULL;
+  CassSession* sess = getSession();
+  printf("%p",sess);
+  const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=?;";
+  CassFuture* future;
+  statement = cass_statement_new(query, 2);
+
+/* 
+CREATE TABLE xoken.txid_outputs (
+    txid text,
+    output_index int,
+    address text,
+    script_hash text,
+    --is_recv boolean,
+    --block_info frozen<tuple<text, int, int>>,
+    --other set <frozen<tuple<frozen<tuple<text, int>>, int, frozen<tuple<text, bigint>>>>>,
+    value bigint,
+    PRIMARY KEY(txid, output_index, is_recv)
+) WITH CLUSTERING ORDER BY (output_index asc);
+*/
+
+  cass_statement_bind_string(statement, 0, txid);
+  cass_statement_bind_int32(statement, 1, (cass_int32_t)output_index);
+
+  future = cass_session_execute(sess, statement);
+  cass_future_wait(future);
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+    cass_future_free(future);
+    return -1;
+  } else {
+    const CassResult* result = cass_future_get_result(future);
+    CassIterator* iterator = cass_iterator_from_result(result);
+
+    if (cass_iterator_next(iterator)) {
+      const CassRow* row = cass_iterator_get_row(iterator);
+      cass_value_get_bool(cass_row_get_column(row, 1), &basic->bln);
+      cass_value_get_double(cass_row_get_column(row, 2), &basic->dbl);
+      cass_value_get_float(cass_row_get_column(row, 3), &basic->flt);
+      cass_value_get_int32(cass_row_get_column(row, 4), &basic->i32);
+      cass_value_get_int64(cass_row_get_column(row, 5), &basic->i64);
+    }
+
+    cass_result_free(result);
+    cass_iterator_free(iterator);
+  }
+
+  cass_future_free(future);
+  cass_statement_free(statement);
+
+  return 0;
+}
+
 int insert_tx( const char* tx_id
              , const char* block_infot, int block_infoi, int block_infoi1
              , int tx_serialized_len
@@ -227,6 +283,45 @@ int insert_script_hash_unspent_outputs( const char* script_hash
   CassSession* sess = getSession();
   printf("%p",sess);
   const char* query = "INSERT INTO xoken.script_hash_unspent_outputs (script_hash, output) VALUES (?, ?);";
+  CassFuture* future;
+  statement = cass_statement_new(query, 2);
+
+/* 
+    script_hash text,
+    output frozen<tuple<text, int>>
+*/
+
+  CassTuple* output = NULL;
+  output = cass_tuple_new(2);
+  cass_tuple_set_string(output, 0, output_hash);
+  cass_tuple_set_int32(output,1,(cass_int32_t)output_index);
+
+  cass_statement_bind_string(statement, 0, script_hash);
+  cass_statement_bind_tuple(statement, 1, output);
+  future = cass_session_execute(sess, statement);
+  cass_future_wait(future);
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+    cass_future_free(future);
+    return -1;
+  }
+
+  cass_future_free(future);
+  cass_tuple_free(output);
+
+  return 0;
+}
+
+int delete_script_hash_unspent_outputs( const char* script_hash
+                                      , const char* output_hash
+                                      , int output_index)
+{ 
+  CassError rc = CASS_OK;
+  CassStatement* statement = NULL;
+  CassSession* sess = getSession();
+  printf("%p",sess);
+  const char* query = "DELETE FROM xoken.script_hash_unspent_outputs WHERE script_hash = ? and output = ?;";
   CassFuture* future;
   statement = cass_statement_new(query, 2);
 
