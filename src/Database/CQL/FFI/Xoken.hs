@@ -3,12 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 
-module Database.CQL.FFI.Xoken
-    ( insertTxIdOutputs
-    , someFunc
-    , cassInit
-    , insertTx
-    ) where
+module Database.CQL.FFI.Xoken where
 
 import Foreign.C
 import Foreign.C.Types
@@ -115,6 +110,40 @@ insertTx txid bi bi1 bi2 tx_s oth fees = do
                             ret <- c_insert_tx txs bis (CInt bi1) (CInt bi2) blob_len blobptr ol aota aota' aotb aotc aotc' (CLong fees)
                             mapM_ free (cota ++ cotc)
                             return ret
+
+foreign import ccall "xoken.c insert_script_hash_outputs"
+    c_insert_script_hash_outputs
+        :: CString
+        -> CLong
+        -> CString
+        -> CInt
+        -> IO CInt
+
+insertScriptHashOutput :: String -> Int64 -> String -> Int32 -> IO CInt
+insertScriptHashOutput sh nti outh outi = withCString sh $ \csh -> withCString outh $ \couth -> c_insert_script_hash_outputs csh (CLong nti) couth (CInt outi)
+
+foreign import ccall "xoken.c insert_script_hash_unspent_outputs"
+    c_insert_script_hash_unspent_outputs
+        :: CString
+        -> CString
+        -> CInt
+        -> IO CInt
+
+insertScriptHashUnspentOutput :: String -> Int64 -> String -> Int32 -> IO CInt
+insertScriptHashUnspentOutput sh nti outh outi = withCString sh $ \csh -> withCString outh $ \couth -> c_insert_script_hash_unspent_outputs csh couth (CInt outi)
+
+foreign import ccall "xoken.c insert_script_output_protocol"
+    c_insert_script_output_protocol
+        :: CString
+        -> CString
+        -> CLong
+        -> CInt
+        -> CInt
+        -> CLong
+        -> IO CInt
+
+insertScriptOutputProtocol :: String -> String -> Int64 -> Int32 -> Int32 -> Int64 -> IO CInt
+insertScriptOutputProtocol proto_str txid fees size oind nti = withCString proto_str $ \p -> withCString txid $ \t -> c_insert_script_output_protocol p t (CLong fees) (CInt size) (CInt oind) (CLong nti)
 
 foreign import ccall "bindings.c &session"
     session :: CassSessionPtr

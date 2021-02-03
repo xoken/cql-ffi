@@ -94,7 +94,6 @@ CREATE TABLE xoken.txid_outputs (
 
   return 0;
 }
-typedef cass_uint8_t cass_byte_t;
 
 int insert_tx( const char* tx_id
              , const char* block_infot, int block_infoi, int block_infoi1
@@ -171,6 +170,134 @@ CREATE TABLE xoken.transactions (
   cass_tuple_free(ot2);
   cass_tuple_free(ott);
   cass_collection_free(inputs);
+
+  return 0;
+}
+
+
+int insert_script_hash_outputs( const char* script_hash
+                              , long nominal_tx_index
+                              , const char* output_hash
+                              , int output_index)
+{ 
+  CassError rc = CASS_OK;
+  CassStatement* statement = NULL;
+  CassSession* sess = getSession();
+  printf("%p",sess);
+  const char* query = "INSERT INTO xoken.script_hash_outputs (script_hash, nominal_tx_index, output) VALUES (?, ?, ?);";
+  CassFuture* future;
+  statement = cass_statement_new(query, 3);
+
+/* 
+    script_hash text,
+    nominal_tx_index bigint,
+    output frozen<tuple<text, int>>
+*/
+
+  CassTuple* output = NULL;
+  output = cass_tuple_new(2);
+  cass_tuple_set_string(output, 0, output_hash);
+  cass_tuple_set_int32(output,1,(cass_int32_t)output_index);
+
+  cass_statement_bind_string(statement, 0, script_hash);
+  cass_statement_bind_int64(statement, 1, (cass_int64_t)nominal_tx_index);
+  cass_statement_bind_tuple(statement, 2, output);
+  future = cass_session_execute(sess, statement);
+  cass_future_wait(future);
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+    cass_future_free(future);
+    return -1;
+  }
+
+  cass_future_free(future);
+  cass_tuple_free(output);
+
+  return 0;
+}
+
+
+int insert_script_hash_unspent_outputs( const char* script_hash
+                                      , const char* output_hash
+                                      , int output_index)
+{ 
+  CassError rc = CASS_OK;
+  CassStatement* statement = NULL;
+  CassSession* sess = getSession();
+  printf("%p",sess);
+  const char* query = "INSERT INTO xoken.script_hash_unspent_outputs (script_hash, output) VALUES (?, ?);";
+  CassFuture* future;
+  statement = cass_statement_new(query, 2);
+
+/* 
+    script_hash text,
+    output frozen<tuple<text, int>>
+*/
+
+  CassTuple* output = NULL;
+  output = cass_tuple_new(2);
+  cass_tuple_set_string(output, 0, output_hash);
+  cass_tuple_set_int32(output,1,(cass_int32_t)output_index);
+
+  cass_statement_bind_string(statement, 0, script_hash);
+  cass_statement_bind_tuple(statement, 1, output);
+  future = cass_session_execute(sess, statement);
+  cass_future_wait(future);
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+    cass_future_free(future);
+    return -1;
+  }
+
+  cass_future_free(future);
+  cass_tuple_free(output);
+
+  return 0;
+}
+
+int insert_script_output_protocol( const char* proto_str
+                                 , const char* txid
+                                 , long fees
+                                 , int size
+                                 , int output_index
+                                 , long nominal_tx_index)
+{ 
+  CassError rc = CASS_OK;
+  CassStatement* statement = NULL;
+  CassSession* sess = getSession();
+  printf("%p",sess);
+  const char* query = "INSERT INTO xoken.script_output_protocol (proto_str, txid, fees, size, output_index, nominal_tx_index) VALUES (?, ?, ?, ?, ?, ?);";
+  CassFuture* future;
+  statement = cass_statement_new(query, 6);
+
+/* 
+    proto_str text,
+    txid text,
+    fees bigint,
+    size int,
+    output_index int,
+    nominal_tx_index bigint
+*/
+
+  cass_statement_bind_string(statement, 0, proto_str);
+  cass_statement_bind_string(statement, 1, txid);
+  cass_statement_bind_int64(statement, 2, (cass_int64_t)fees);
+  cass_statement_bind_int32(statement, 3, (cass_int32_t)size);
+  cass_statement_bind_int32(statement, 4, (cass_int32_t)output_index);
+  cass_statement_bind_int64(statement, 5, (cass_int64_t)nominal_tx_index);
+
+  future = cass_session_execute(sess, statement);
+  cass_future_wait(future);
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+    cass_future_free(future);
+    return -1;
+  }
+
+  cass_future_free(future);
 
   return 0;
 }
