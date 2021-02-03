@@ -13,7 +13,7 @@ import Foreign.Ptr
 import Data.Int
 
 someFunc :: IO ()
-someFunc = cass_init >>= print >> insert_misc_store "test" 0 "hash" >>= print -- >>runXCql-- >> runXCql
+someFunc = cass_init >>= print >> c_insert_misc_store >>= print -- >>runXCql-- >> runXCql
 
 {-
 conc :: IO ()
@@ -29,11 +29,17 @@ data CassSession
 type CassSessionPtr = Ptr CassSession
 
 foreign import ccall "xoken.h insert_misc_store"
+    c_insert_misc_store :: IO CInt
+{-
+foreign import ccall "xoken.h insert_misc_store"
     c_insert_misc_store :: CString -> CInt -> CString -> IO CInt
+
+foreign import ccall "xoken.h run"
+    run :: IO CInt
 
 insert_misc_store :: String -> Int32 -> String -> IO CInt
 insert_misc_store k ht hs = withCString k (\ks -> withCString hs (\hss -> c_insert_misc_store ks (CInt ht) hss))
-
+-}
 foreign import ccall "bindings.c &session"
     session :: CassSessionPtr
 

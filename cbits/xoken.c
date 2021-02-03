@@ -6,23 +6,24 @@
 #include "cassandra.h"
 #include "bindings.h"
 
-int insert_misc_store(const char* key, int32_t tup2, const char* tup4){ // Maybe Bool, Int32, Maybe Int64, Text
+int insert_misc_store(){ // Maybe Bool, Int32, Maybe Int64, Text
+  
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassTuple* item = NULL;
   CassSession* sess = getSession();
+  printf("%p",sess);
   const char* query = "INSERT INTO xoken.misc_store (key, value) VALUES (?, ?);";
   CassFuture* future;
   statement = cass_statement_new(query, 2);
 
   item = cass_tuple_new(2);
+  cass_tuple_set_bool(item, 0,cass_true);
+  cass_tuple_set_int32(item, 1, (cass_int32_t)5);
+  cass_tuple_set_int64(item, 2, (cass_int64_t)10);
+  cass_tuple_set_string(item, 3, "tup4");
 
-  cass_tuple_set_null(item, 0);
-  cass_tuple_set_int32(item, 1, (cass_int32_t)tup2);
-  cass_tuple_set_null(item, 2);
-  cass_tuple_set_string(item, 3, tup4);
-
-  cass_statement_bind_string(statement, 0, key);
+  cass_statement_bind_string(statement, 0, "key");
   cass_statement_bind_tuple(statement, 1, item);
 
   future = cass_session_execute(sess, statement);
@@ -36,4 +37,8 @@ int insert_misc_store(const char* key, int32_t tup2, const char* tup4){ // Maybe
 
   cass_future_free(future);
   return 0;
+}
+
+int run(){
+    return insert_misc_store("k",12,"v");
 }
