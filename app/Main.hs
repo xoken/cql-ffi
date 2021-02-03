@@ -1,6 +1,6 @@
 module Main where
 
-import Xoken
+import Database.CQL.FFI.Xoken
 
 main :: IO ()
 main = someFunc

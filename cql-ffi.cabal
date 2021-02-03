@@ -28,7 +28,7 @@ source-repository head
 library
   exposed-modules:
       Lib
-     ,Xoken
+     ,Database.CQL.FFI.Xoken
   other-modules:
       Paths_cql_ffi
   hs-source-dirs:
