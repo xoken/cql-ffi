@@ -45,7 +45,7 @@ CREATE TABLE xoken.txid_outputs (
   cass_tuple_set_int32(block_info,2,(cass_int32_t)block_infoi1);
 
   CassCollection* other = NULL;
-  other = cass_collection_new(CASS_COLLECTION_TYPE_SET, 1);
+  other = cass_collection_new(CASS_COLLECTION_TYPE_SET, other_len);
 
   CassTuple* ot1 = NULL;
   CassTuple* ot2 = NULL;
@@ -91,6 +91,86 @@ CREATE TABLE xoken.txid_outputs (
   cass_tuple_free(ot2);
   cass_tuple_free(ott);
   cass_collection_free(other);
+
+  return 0;
+}
+typedef cass_uint8_t cass_byte_t;
+
+int insert_tx( const char* tx_id
+             , const char* block_infot, int block_infoi, int block_infoi1
+             , int tx_serialized_len
+             , const uint8_t* tx_serialized
+             , int input_len
+             , const char* input0[], int input0i[], int input1[], const char* input2[], long input2i[]
+             , long fees){ // Maybe Bool, Int32, Maybe Int64, Text
+  CassError rc = CASS_OK;
+  CassStatement* statement = NULL;
+  CassSession* sess = getSession();
+  printf("%p",sess);
+  const char* query = "INSERT INTO xoken.transactions (tx_id, block_info, tx_serialized, inputs, fees) VALUES (?, ?, ?, ?, ?);";
+  CassFuture* future;
+  statement = cass_statement_new(query, 5);
+
+/* 
+CREATE TABLE xoken.transactions (
+    tx_id text PRIMARY KEY,
+    block_info frozen<tuple<text, int, int>>,
+    tx_serialized blob,
+    inputs set  <frozen<tuple<frozen<tuple<text, int>>, int, frozen<tuple<text, bigint>>>>>,
+    fees bigint
+);
+*/
+
+  CassTuple* block_info = NULL;
+  block_info = cass_tuple_new(3);
+  cass_tuple_set_string(block_info, 0, block_infot);
+  cass_tuple_set_int32(block_info,1,(cass_int32_t)block_infoi);
+  cass_tuple_set_int32(block_info,2,(cass_int32_t)block_infoi1);
+
+  CassCollection* inputs = NULL;
+  inputs = cass_collection_new(CASS_COLLECTION_TYPE_SET, input_len);
+
+  CassTuple* ot1 = NULL;
+  CassTuple* ot2 = NULL;
+  CassTuple* ott = NULL;
+
+  for(int i = 0; i < input_len; ++i){
+  ot1 = cass_tuple_new(2);
+  cass_tuple_set_string(ot1, 0, input0[i]);
+  cass_tuple_set_int32(ot1,1,(cass_int32_t)input0i[i]);
+
+  ot2 = cass_tuple_new(2);
+  cass_tuple_set_string(ot2, 0, input2[i]);
+  cass_tuple_set_int64(ot2,1,(cass_int64_t)input2i[i]);
+
+  ott = cass_tuple_new(3);
+  cass_tuple_set_tuple(ott, 0, ot1);
+  cass_tuple_set_int32(ott,1,(cass_int32_t)input1[i]);
+  cass_tuple_set_tuple(ott, 2, ot2);
+
+  
+  cass_collection_append_tuple(inputs,ott);
+  }
+  cass_statement_bind_string(statement, 0, tx_id);
+  cass_statement_bind_tuple(statement, 1, block_info);
+  cass_statement_bind_bytes(statement, 2, tx_serialized, tx_serialized_len);
+  cass_statement_bind_collection(statement, 3, inputs);
+  cass_statement_bind_int64(statement, 4, (cass_int64_t)fees);
+  future = cass_session_execute(sess, statement);
+  cass_future_wait(future);
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+    cass_future_free(future);
+    return -1;
+  }
+
+  cass_future_free(future);
+  cass_tuple_free(block_info);
+  cass_tuple_free(ot1);
+  cass_tuple_free(ot2);
+  cass_tuple_free(ott);
+  cass_collection_free(inputs);
 
   return 0;
 }

@@ -35,8 +35,9 @@ library
       src
   build-depends:
       base >=4.7 && <5
+     ,bytestring
   default-language: Haskell2010
-  c-sources: cbits/bindings.h cbits/xoken.h cbits/bindings.c cbits/xoken.c
+  c-sources: cbits/bindings.h cbits/bindings.c cbits/xoken.c
   extra-libraries: cassandra
 
 executable cql-ffi
