@@ -129,8 +129,19 @@ foreign import ccall "xoken.c insert_script_hash_unspent_outputs"
         -> CInt
         -> IO CInt
 
-insertScriptHashUnspentOutput :: String -> Int64 -> String -> Int32 -> IO CInt
-insertScriptHashUnspentOutput sh nti outh outi = withCString sh $ \csh -> withCString outh $ \couth -> c_insert_script_hash_unspent_outputs csh couth (CInt outi)
+insertScriptHashUnspentOutput :: String -> String -> Int32 -> IO CInt
+insertScriptHashUnspentOutput sh outh outi = withCString sh $ \csh -> withCString outh $ \couth -> c_insert_script_hash_unspent_outputs csh couth (CInt outi)
+
+foreign import ccall "xoken.c delete_script_hash_unspent_outputs"
+    c_delete_script_hash_unspent_outputs
+        :: CString
+        -> CString
+        -> CInt
+        -> IO CInt
+
+deleteScriptHashUnspentOutput :: String -> String -> Int32 -> IO CInt
+deleteScriptHashUnspentOutput sh outh outi = withCString sh $ \csh -> withCString outh $ \couth -> c_delete_script_hash_unspent_outputs csh couth (CInt outi)
+
 
 foreign import ccall "xoken.c insert_script_output_protocol"
     c_insert_script_output_protocol
