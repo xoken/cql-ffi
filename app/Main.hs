@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Xoken
 
 main :: IO ()
 main = someFunc
