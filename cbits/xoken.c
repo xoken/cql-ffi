@@ -7,7 +7,14 @@
 #include "cassandra.h"
 #include "bindings.h"
 
-int insert_txid_outputs(const char* txid, int output_index, const char* address, const char* scripthash, bool is_recv, long value){ // Maybe Bool, Int32, Maybe Int64, Text
+int insert_txid_outputs( const char* txid
+                       , int output_index
+                       , const char* address
+                       , const char* scripthash
+                       , bool is_recv
+                       , const char* block_infot, int block_infoi, int block_infoi1
+                       , const char* other0, int other0i, int other1, const char* other2, long other2i
+                       , long value){ // Maybe Bool, Int32, Maybe Int64, Text
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
@@ -32,29 +39,29 @@ CREATE TABLE xoken.txid_outputs (
 
   CassTuple* block_info = NULL;
   block_info = cass_tuple_new(3);
-  cass_tuple_set_string(block_info, 0, "blockinfo");
-  cass_tuple_set_int32(block_info,1,(cass_int32_t)10);
-  cass_tuple_set_int32(block_info,2,(cass_int32_t)10);
+  cass_tuple_set_string(block_info, 0, block_infot);
+  cass_tuple_set_int32(block_info,1,(cass_int32_t)block_infoi);
+  cass_tuple_set_int32(block_info,2,(cass_int32_t)block_infoi1);
 
-  CassTuple* other1 = NULL;
-  other1 = cass_tuple_new(2);
-  cass_tuple_set_string(other1, 0, "other1");
-  cass_tuple_set_int32(other1,1,(cass_int32_t)10);
+  CassTuple* ot1 = NULL;
+  ot1 = cass_tuple_new(2);
+  cass_tuple_set_string(ot1, 0, other0);
+  cass_tuple_set_int32(ot1,1,(cass_int32_t)other0i);
 
-  CassTuple* other2 = NULL;
-  other2 = cass_tuple_new(2);
-  cass_tuple_set_string(other2, 0, "other2");
-  cass_tuple_set_int64(other2,1,(cass_int64_t)10);
+  CassTuple* ot2 = NULL;
+  ot2 = cass_tuple_new(2);
+  cass_tuple_set_string(ot2, 0, other2);
+  cass_tuple_set_int64(ot2,1,(cass_int64_t)other2i);
 
-  CassTuple* othert = NULL;
-  othert = cass_tuple_new(3);
-  cass_tuple_set_tuple(othert, 0, other1);
-  cass_tuple_set_int32(othert,1,(cass_int32_t)10);
-  cass_tuple_set_tuple(othert, 2, other2);
+  CassTuple* ott = NULL;
+  ott = cass_tuple_new(3);
+  cass_tuple_set_tuple(ott, 0, ot1);
+  cass_tuple_set_int32(ott,1,(cass_int32_t)10);
+  cass_tuple_set_tuple(ott, 2, ot2);
 
   CassCollection* other = NULL;
   other = cass_collection_new(CASS_COLLECTION_TYPE_SET, 1);
-  cass_collection_append_tuple(other,othert);
+  cass_collection_append_tuple(other,ott);
 
   cass_statement_bind_string(statement, 0, txid);
   cass_statement_bind_int32(statement, 1, (cass_int32_t)output_index);
@@ -75,9 +82,9 @@ CREATE TABLE xoken.txid_outputs (
 
   cass_future_free(future);
   cass_tuple_free(block_info);
-  cass_tuple_free(other1);
-  cass_tuple_free(other2);
-  cass_tuple_free(othert);
+  cass_tuple_free(ot1);
+  cass_tuple_free(ot2);
+  cass_tuple_free(ott);
   cass_collection_free(other);
 
   return 0;

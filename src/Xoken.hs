@@ -15,8 +15,8 @@ import Data.Int
 someFunc :: IO ()
 someFunc = 
     cass_init >>= print >>
-    insertTxidOutputs "nohardcode1" 100 "nhevqv" "qwfqgwes" True 100 >>= print >>
-    insertTxidOutputs "nohardcode1" 101 "nhevqv" "qwfqgwes" False 110 >>= print -- >>runXCql-- >> runXCql
+    insertTxidOutputs "nohardcode1" 105 "nhevqv" "qwfqgwes" True "bi" 42 12 "a" 5 2 "b" 13 100 >>= print >>
+    insertTxidOutputs "nohardcode1" 106 "nhevqv" "qwfqgwes" False "bi" 12 51 "a" 5 2 "b" 13 110 >>= print -- >>runXCql-- >> runXCql
 
 {-
 conc :: IO ()
@@ -38,17 +38,29 @@ foreign import ccall "xoken.h insert_txid_outputs"
         -> CString
         -> CString
         -> CBool
+        -> CString -> CInt -> CInt
+        -> CString -> CInt -> CInt -> CString -> CLong
         -> CLong
         -> IO CInt
 
-insertTxidOutputs :: String -> Int32 -> String -> String -> Bool -> Int64 -> IO CInt
-insertTxidOutputs txid output_index address scripthash is_recv value =
+insertTxidOutputs 
+    :: String
+    -> Int32
+    -> String
+    -> String
+    -> Bool
+    -> String -> Int32 -> Int32
+    -> String -> Int32 -> Int32 -> String -> Int64
+    -> Int64
+    -> IO CInt
+insertTxidOutputs txid output_index address scripthash is_recv bi bi1 bi2 ota ota' otb otc otc' value =
     withCString txid
-        $ \txs -> 
-            withCString address
-                $ \ads ->
-                    withCString scripthash
-                        $ \shs -> c_insert_txid_outputs txs (CInt output_index) ads shs (CBool $ if is_recv then 1 else 0) (CLong value)
+        $ \txs -> withCString address
+            $ \ads -> withCString scripthash
+                $ \shs -> withCString bi
+                    $ \bis -> withCString ota
+                        $ \otas -> withCString otc
+                            $ \otcs -> c_insert_txid_outputs txs (CInt output_index) ads shs (CBool $ if is_recv then 1 else 0) bis (CInt bi1) (CInt bi2) otas (CInt ota') (CInt otb) otcs (CLong otc') (CLong value)
 {-
 foreign import ccall "xoken.h insert_misc_store"
     c_insert_misc_store :: CString -> CInt -> CString -> IO CInt
