@@ -95,7 +95,17 @@ CREATE TABLE xoken.txid_outputs (
   return 0;
 }
 
-int select_txid_outputs( const char* txid, int output_index){
+struct TxIdOutputsResult_ {
+  const char* address;
+  size_t address_len;
+  const char* script_hash;
+  size_t script_hash_len;
+  cass_int64_t value;
+};
+
+typedef struct TxIdOutputsResult_ TxIdOutputsResult;
+
+TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index){
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
@@ -103,7 +113,7 @@ int select_txid_outputs( const char* txid, int output_index){
   const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=?;";
   CassFuture* future;
   statement = cass_statement_new(query, 2);
-
+  TxIdOutputsResult* res = NULL;
 /* 
 CREATE TABLE xoken.txid_outputs (
     txid text,
@@ -127,18 +137,16 @@ CREATE TABLE xoken.txid_outputs (
   if (rc != CASS_OK) {
     print_error(future);
     cass_future_free(future);
-    return -1;
+    return NULL;
   } else {
     const CassResult* result = cass_future_get_result(future);
     CassIterator* iterator = cass_iterator_from_result(result);
 
     if (cass_iterator_next(iterator)) {
       const CassRow* row = cass_iterator_get_row(iterator);
-      cass_value_get_bool(cass_row_get_column(row, 1), &basic->bln);
-      cass_value_get_double(cass_row_get_column(row, 2), &basic->dbl);
-      cass_value_get_float(cass_row_get_column(row, 3), &basic->flt);
-      cass_value_get_int32(cass_row_get_column(row, 4), &basic->i32);
-      cass_value_get_int64(cass_row_get_column(row, 5), &basic->i64);
+      cass_value_get_string(cass_row_get_column(row, 0), &res->address, &res->address_len);
+      cass_value_get_string(cass_row_get_column(row, 1), &res->script_hash, &res->script_hash_len);
+      cass_value_get_int64(cass_row_get_column(row, 2), &res->value);
     }
 
     cass_result_free(result);
@@ -147,8 +155,8 @@ CREATE TABLE xoken.txid_outputs (
 
   cass_future_free(future);
   cass_statement_free(statement);
-
-  return 0;
+  return NULL;
+  //return res;
 }
 
 int insert_tx( const char* tx_id

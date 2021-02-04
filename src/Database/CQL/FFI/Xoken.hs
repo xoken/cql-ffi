@@ -1,17 +1,21 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE DeriveGeneric #-}
 
 module Database.CQL.FFI.Xoken where
 
 import Foreign.C
 import Foreign.C.Types
+import Foreign.C.String
 import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
 import Data.Int
 import qualified Data.ByteString.Lazy as B
+import GHC.Generics (Generic)
+import Foreign.Storable
+import Foreign.CStorable
 
 someFunc :: IO ()
 someFunc = 
@@ -76,6 +80,35 @@ insertTxIdOutputs txid output_index address scripthash is_recv bi bi1 bi2 oth va
                             ret <- c_insert_txid_outputs txs (CInt output_index) ads shs (CBool $ if is_recv then 1 else 0) bis (CInt bi1) (CInt bi2) ol aota aota' aotb aotc aotc' (CLong value)
                             mapM_ free (cota ++ cotc)
                             return ret
+
+data TxIdOutputsResult = TxIdOutputsResult CString CSize CString CSize CLong deriving (Generic)
+instance CStorable TxIdOutputsResult
+
+instance Storable TxIdOutputsResult where
+    sizeOf = cSizeOf
+    alignment = cAlignment
+    poke = cPoke
+    peek = cPeek
+
+foreign import ccall "xoken.c select_txid_outputs"
+    c_select_txid_outputs
+        :: CString
+        -> CInt
+        -> IO (Ptr TxIdOutputsResult)
+
+selectTxIdOutputs :: String -> Int32 -> IO (Maybe (String, String, Int64))
+selectTxIdOutputs s i =
+    withCString s $ \ss -> do
+        print "BEFORE selectTxIdOutputs"
+        txidrp <- c_select_txid_outputs ss (CInt i)
+        print "AFTER selectTxIdOutputs"
+        if txidrp == nullPtr
+            then return Nothing
+            else do
+                TxIdOutputsResult ad adl sh shl (CLong v) <- peek txidrp
+                ads <- peekCString ad
+                shs <- peekCString sh
+                return $ Just (ads, shs, v)
 
 foreign import ccall "xoken.c insert_tx"
     c_insert_tx
