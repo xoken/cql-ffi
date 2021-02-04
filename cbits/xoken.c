@@ -362,9 +362,9 @@ int delete_script_hash_unspent_outputs( const char* script_hash
 
 int insert_script_output_protocol( const char* proto_str
                                  , const char* txid
+                                 , int output_index
                                  , long fees
                                  , int size
-                                 , int output_index
                                  , long nominal_tx_index)
 { 
   CassError rc = CASS_OK;

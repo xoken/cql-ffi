@@ -180,14 +180,14 @@ foreign import ccall "xoken.c insert_script_output_protocol"
     c_insert_script_output_protocol
         :: CString
         -> CString
-        -> CLong
         -> CInt
+        -> CLong
         -> CInt
         -> CLong
         -> IO CInt
 
-insertScriptOutputProtocol :: String -> String -> Int64 -> Int32 -> Int32 -> Int64 -> IO CInt
-insertScriptOutputProtocol proto_str txid fees size oind nti = withCString proto_str $ \p -> withCString txid $ \t -> c_insert_script_output_protocol p t (CLong fees) (CInt size) (CInt oind) (CLong nti)
+insertScriptOutputProtocol :: String -> String -> Int32 -> Int64 -> Int32 -> Int64 -> IO CInt
+insertScriptOutputProtocol proto_str txid oind fees size nti = withCString proto_str $ \p -> withCString txid $ \t -> c_insert_script_output_protocol p t  (CInt oind) (CLong fees) (CInt size) (CLong nti)
 
 foreign import ccall "bindings.c &session"
     session :: CassSessionPtr
