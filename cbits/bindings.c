@@ -71,3 +71,8 @@ int init(){
   }
   return 0;
 }
+
+void free_all(){
+  cass_cluster_free(cluster);
+  cass_session_free(session);
+}

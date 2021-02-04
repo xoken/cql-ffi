@@ -192,11 +192,22 @@ insertScriptOutputProtocol proto_str txid oind fees size nti = withCString proto
 foreign import ccall "bindings.c &session"
     session :: CassSessionPtr
 
+foreign import ccall "xoken.c prepare_all"
+    prepareAll :: IO ()
+
+foreign import ccall "xoken.c free_prepared"
+    freePrepared :: IO ()
+
+foreign import ccall "bindings.c free_all"
+    freeAll :: IO ()
+
+cassFree :: IO ()
+cassFree = freePrepared >> freeAll
+
 foreign import ccall "cassandra.h cass_session_new"
     cassSessionNew :: IO CassSessionPtr
 
 foreign import ccall "bindings.h init"
     cassInit :: IO CInt
 
-concHs :: IO ()
-concHs = print "run"
+initAll = cassInit >> prepareAll
