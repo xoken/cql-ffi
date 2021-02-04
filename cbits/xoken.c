@@ -132,9 +132,11 @@ CREATE TABLE xoken.txid_outputs (
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
     print_error(future);
+    cass_statement_free(statement);
     cass_future_free(future);
     return -1;
   }
+  cass_statement_free(statement);
 
   cass_future_free(future);
   cass_tuple_free(block_info);
@@ -274,9 +276,11 @@ CREATE TABLE xoken.transactions (
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
     print_error(future);
+    cass_statement_free(statement);
     cass_future_free(future);
     return -1;
   }
+  cass_statement_free(statement);
 
   cass_future_free(future);
   cass_tuple_free(block_info);
@@ -320,10 +324,12 @@ int insert_script_hash_outputs( const char* script_hash
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
     print_error(future);
+    cass_statement_free(statement);
     cass_future_free(future);
     return -1;
   }
 
+  cass_statement_free(statement);
   cass_future_free(future);
   cass_tuple_free(output);
 
@@ -359,11 +365,13 @@ int insert_script_hash_unspent_outputs( const char* script_hash
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
     print_error(future);
+    cass_statement_free(statement);
     cass_future_free(future);
     return -1;
   }
 
   cass_future_free(future);
+  cass_statement_free(statement);
   cass_tuple_free(output);
 
   return 0;
@@ -397,11 +405,13 @@ int delete_script_hash_unspent_outputs( const char* script_hash
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
     print_error(future);
+    cass_statement_free(statement);
     cass_future_free(future);
     return -1;
   }
 
   cass_future_free(future);
+  cass_statement_free(statement);
   cass_tuple_free(output);
 
   return 0;
@@ -442,10 +452,12 @@ int insert_script_output_protocol( const char* proto_str
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
     print_error(future);
+    cass_statement_free(statement);
     cass_future_free(future);
     return -1;
   }
 
+  cass_statement_free(statement);
   cass_future_free(future);
 
   return 0;
