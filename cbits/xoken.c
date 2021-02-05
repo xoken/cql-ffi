@@ -158,15 +158,14 @@ struct TxIdOutputsResult_ {
 
 typedef struct TxIdOutputsResult_ TxIdOutputsResult;
 
-TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index){
+TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index, bool is_recv){
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  printf("%p",sess);
-  const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=?;";
+  const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=? AND is_recv=?;";
   CassFuture* future;
-  statement = cass_statement_new(query, 2);
-  TxIdOutputsResult* res = NULL;
+  statement = cass_statement_new(query, 3);
+  TxIdOutputsResult* res = (TxIdOutputsResult*)(malloc(sizeof(TxIdOutputsResult)));
 /* 
 CREATE TABLE xoken.txid_outputs (
     txid text,
@@ -183,7 +182,12 @@ CREATE TABLE xoken.txid_outputs (
 
   cass_statement_bind_string(statement, 0, txid);
   cass_statement_bind_int32(statement, 1, (cass_int32_t)output_index);
-
+  cass_statement_bind_bool(statement, 2, (cass_bool_t)is_recv);
+  const char* address;
+  size_t address_len;
+  const char* script_hash;
+  size_t script_hash_len;
+  cass_int64_t value;
   future = cass_session_execute(sess, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
@@ -200,7 +204,14 @@ CREATE TABLE xoken.txid_outputs (
       cass_value_get_string(cass_row_get_column(row, 0), &res->address, &res->address_len);
       cass_value_get_string(cass_row_get_column(row, 1), &res->script_hash, &res->script_hash_len);
       cass_value_get_int64(cass_row_get_column(row, 2), &res->value);
+        printf("%d\n",res->value);
+  printf("%s\n",res->address);
+  printf("%d\n",res->address_len);
+  printf("%d\n",res->script_hash_len);
+  printf("%s\n",res->script_hash);
     }
+    else
+      return NULL;
 
     cass_result_free(result);
     cass_iterator_free(iterator);
@@ -208,8 +219,8 @@ CREATE TABLE xoken.txid_outputs (
 
   cass_future_free(future);
   cass_statement_free(statement);
-  return NULL;
-  //return res;
+  //return NULL;
+  return res;
 }
 
 int insert_tx( const char* tx_id
