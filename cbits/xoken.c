@@ -8,6 +8,7 @@
 #include "bindings.h"
 
 const CassPrepared* prepared_insert_txid_outputs = NULL;
+const CassPrepared* prepared_select_txid_outputs = NULL;
 const CassPrepared* prepared_insert_tx= NULL;
 const CassPrepared* prepared_insert_script_hash_outputs = NULL;
 const CassPrepared* prepared_insert_script_hash_unspent_outputs = NULL;
@@ -35,6 +36,7 @@ CassError prepare(CassSession* session, const CassPrepared** prepared, const cha
 
 void prepare_all(){
   const char* q_insert_txid_outputs = "INSERT INTO xoken.txid_outputs (txid, output_index,address,script_hash,is_recv,block_info,other,value) VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+  const char* q_select_txid_outputs = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=? AND is_recv=true;";
   const char* q_insert_tx = "INSERT INTO xoken.transactions (tx_id, block_info, tx_serialized, inputs, fees) VALUES (?, ?, ?, ?, ?);";
   const char* q_insert_script_hash_outputs = "INSERT INTO xoken.script_hash_outputs (script_hash, nominal_tx_index, output) VALUES (?, ?, ?);";
   const char* q_insert_script_hash_unspent_outputs = "INSERT INTO xoken.script_hash_unspent_outputs (script_hash, output) VALUES (?, ?);";
@@ -42,6 +44,7 @@ void prepare_all(){
   const char* q_insert_script_output_protocol = "INSERT INTO xoken.script_output_protocol (proto_str, txid, fees, size, output_index, nominal_tx_index) VALUES (?, ?, ?, ?, ?, ?);";
   CassSession* sess = getSession();
   prepare(sess,&prepared_insert_txid_outputs,q_insert_txid_outputs);
+  prepare(sess,&prepared_select_txid_outputs,q_select_txid_outputs);
   prepare(sess,&prepared_insert_tx,q_insert_tx);
   prepare(sess,&prepared_insert_script_hash_outputs,q_insert_script_hash_outputs);
   prepare(sess,&prepared_insert_script_hash_unspent_outputs,q_insert_script_hash_unspent_outputs);
@@ -51,6 +54,7 @@ void prepare_all(){
 
 void free_prepared(){
   cass_prepared_free(prepared_insert_txid_outputs);
+  cass_prepared_free(prepared_select_txid_outputs);
   cass_prepared_free(prepared_insert_tx);
   cass_prepared_free(prepared_insert_script_hash_outputs);
   cass_prepared_free(prepared_insert_script_hash_unspent_outputs);
@@ -71,7 +75,6 @@ int insert_txid_outputs( const char* txid
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  printf("%p",sess);
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_txid_outputs);
 
@@ -164,7 +167,7 @@ TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index){
   CassSession* sess = getSession();
   const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=? AND is_recv=true;";
   CassFuture* future;
-  statement = cass_statement_new(query, 2);
+  statement = cass_prepared_bind(prepared_select_txid_outputs);
   TxIdOutputsResult* res = (TxIdOutputsResult*)(malloc(sizeof(TxIdOutputsResult)));
 /* 
 CREATE TABLE xoken.txid_outputs (
@@ -198,11 +201,6 @@ CREATE TABLE xoken.txid_outputs (
       cass_value_get_string(cass_row_get_column(row, 0), &res->address, &res->address_len);
       cass_value_get_string(cass_row_get_column(row, 1), &res->script_hash, &res->script_hash_len);
       cass_value_get_int64(cass_row_get_column(row, 2), &res->value);
-        printf("%d\n",res->value);
-  printf("%s\n",res->address);
-  printf("%d\n",res->address_len);
-  printf("%d\n",res->script_hash_len);
-  printf("%s\n",res->script_hash);
     }
     else
       return NULL;
