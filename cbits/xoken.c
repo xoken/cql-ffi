@@ -158,13 +158,13 @@ struct TxIdOutputsResult_ {
 
 typedef struct TxIdOutputsResult_ TxIdOutputsResult;
 
-TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index, bool is_recv){
+TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index){
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=? AND is_recv=?;";
+  const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=? AND is_recv=true;";
   CassFuture* future;
-  statement = cass_statement_new(query, 3);
+  statement = cass_statement_new(query, 2);
   TxIdOutputsResult* res = (TxIdOutputsResult*)(malloc(sizeof(TxIdOutputsResult)));
 /* 
 CREATE TABLE xoken.txid_outputs (
@@ -182,12 +182,6 @@ CREATE TABLE xoken.txid_outputs (
 
   cass_statement_bind_string(statement, 0, txid);
   cass_statement_bind_int32(statement, 1, (cass_int32_t)output_index);
-  cass_statement_bind_bool(statement, 2, (cass_bool_t)is_recv);
-  const char* address;
-  size_t address_len;
-  const char* script_hash;
-  size_t script_hash_len;
-  cass_int64_t value;
   future = cass_session_execute(sess, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);

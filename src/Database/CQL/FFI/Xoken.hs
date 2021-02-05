@@ -94,31 +94,19 @@ foreign import ccall "xoken.c select_txid_outputs"
     c_select_txid_outputs
         :: CString
         -> CInt
-        -> CBool
         -> IO (Ptr TxIdOutputsResult)
 
-selectTxIdOutputs :: String -> Int32 -> IO [(String, String, Int64)]
+selectTxIdOutputs :: String -> Int32 -> IO (Maybe (String, String, Int64))
 selectTxIdOutputs s i =
     withCString s $ \ss -> do
-        txidrp <- c_select_txid_outputs ss (CInt i) (CBool 1)
-        txidr <- 
-            if txidrp == nullPtr
-                then return []
-                else do
-                    TxIdOutputsResult ad adl sh shl (CLong v) <- peek txidrp
-                    ads <- peekCString ad
-                    shs <- peekCString sh
-                    return $ [(ads, shs, v)]
-        txidrp' <- c_select_txid_outputs ss (CInt i) (CBool 0)
-        txidr' <- 
-            if txidrp' == nullPtr
-                then return []
-                else do
-                    TxIdOutputsResult ad' adl' sh' shl' (CLong v') <- peek txidrp'
-                    ads' <- peekCString ad'
-                    shs' <- peekCString sh'
-                    return $ [(ads', shs', v')]
-        return $ txidr ++ txidr'
+        txidrp <- c_select_txid_outputs ss (CInt i)
+        if txidrp == nullPtr
+            then return Nothing
+            else do
+                TxIdOutputsResult ad adl sh shl (CLong v) <- peek txidrp
+                ads <- peekCString ad
+                shs <- peekCString sh
+                return $ Just (ads, shs, v)
 
 foreign import ccall "xoken.c insert_tx"
     c_insert_tx
