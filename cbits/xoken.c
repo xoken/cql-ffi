@@ -225,7 +225,6 @@ int insert_tx( const char* tx_id
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  printf("%p",sess);
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_tx);
 
@@ -304,7 +303,6 @@ int insert_script_hash_outputs( const char* script_hash
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  printf("%p",sess);
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_script_hash_outputs);
 
@@ -347,7 +345,6 @@ int insert_script_hash_unspent_outputs( const char* script_hash
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  printf("%p",sess);
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_script_hash_unspent_outputs);
 
@@ -387,7 +384,6 @@ int delete_script_hash_unspent_outputs( const char* script_hash
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  printf("%p",sess);
   CassFuture* future;
   statement = cass_prepared_bind(prepared_delete_script_hash_unspent_outputs);
 
@@ -430,7 +426,6 @@ int insert_script_output_protocol( const char* proto_str
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   CassSession* sess = getSession();
-  printf("%p",sess);
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_script_output_protocol);
 
