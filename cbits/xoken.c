@@ -186,6 +186,8 @@ CREATE TABLE xoken.txid_outputs (
   cass_statement_bind_string(statement, 0, txid);
   cass_statement_bind_int32(statement, 1, (cass_int32_t)output_index);
   future = cass_session_execute(sess, statement);
+  cass_statement_free(statement);
+
   cass_future_wait(future);
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
@@ -202,16 +204,16 @@ CREATE TABLE xoken.txid_outputs (
       cass_value_get_string(cass_row_get_column(row, 1), &res->script_hash, &res->script_hash_len);
       cass_value_get_int64(cass_row_get_column(row, 2), &res->value);
     }
-    else
+    else {
+      cass_future_free(future);
       return NULL;
+    }
 
     cass_result_free(result);
     cass_iterator_free(iterator);
   }
 
   cass_future_free(future);
-  cass_statement_free(statement);
-  //return NULL;
   return res;
 }
 
