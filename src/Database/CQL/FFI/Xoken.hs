@@ -106,6 +106,9 @@ selectTxIdOutputs s i =
                 TxIdOutputsResult ad adl sh shl (CLong v) <- peek txidrp
                 ads <- peekCString ad
                 shs <- peekCString sh
+                --free ad
+                --free sh
+                free txidrp
                 return $ Just (ads, shs, v)
 
 foreign import ccall "xoken.c insert_tx"
