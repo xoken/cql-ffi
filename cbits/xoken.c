@@ -5,7 +5,79 @@
 #include <stdbool.h>
 
 #include "cassandra.h"
-#include "bindings.h"
+
+CassCluster* cluster = NULL;
+CassSession* session = NULL;
+
+CassSession* getSession(){
+    return session;
+}
+
+void print_error(CassFuture* future) {
+  const char* message;
+  size_t message_length;
+  cass_future_error_message(future, &message, &message_length);
+  fprintf(stderr, "CassError: %.*s\n", (int)message_length, message);
+}
+
+CassCluster* create_cluster(const char* hosts) {
+  CassCluster* cluster = cass_cluster_new();
+  cass_cluster_set_contact_points(cluster, hosts);
+  return cluster;
+}
+
+CassError connect_session(CassSession* session, const CassCluster* cluster) {
+  CassError rc = CASS_OK;
+  CassFuture* future = cass_session_connect(session, cluster);
+
+  cass_future_wait(future);
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+  }
+  cass_future_free(future);
+
+  return rc;
+}
+
+CassError execute_query(CassSession* session, const char* query) {
+  CassError rc = CASS_OK;
+  CassFuture* future = NULL;
+  CassStatement* statement = cass_statement_new(query, 0);
+
+  future = cass_session_execute(session, statement);
+  cass_future_wait(future);
+
+  rc = cass_future_error_code(future);
+  if (rc != CASS_OK) {
+    print_error(future);
+  }
+
+  cass_future_free(future);
+  cass_statement_free(statement);
+
+  return rc;
+}
+
+int init(){
+  session = cass_session_new();
+  char* hosts = "127.0.0.1";
+  cluster = create_cluster(hosts);
+
+  if (connect_session(session, cluster) != CASS_OK) {
+    cass_cluster_free(cluster);
+    cass_session_free(session);
+    return -1;
+  }
+  return 0;
+}
+
+void free_all(){
+  cass_cluster_free(cluster);
+  cass_session_free(session);
+}
+
+// ====================================================================================== //
 
 const CassPrepared* prepared_insert_txid_outputs = NULL;
 const CassPrepared* prepared_select_txid_outputs = NULL;
@@ -42,14 +114,14 @@ void prepare_all(){
   const char* q_insert_script_hash_unspent_outputs = "INSERT INTO xoken.script_hash_unspent_outputs (script_hash, output) VALUES (?, ?);";
   const char* q_delete_script_hash_unspent_outputs = "DELETE FROM xoken.script_hash_unspent_outputs WHERE script_hash = ? and output = ?;";
   const char* q_insert_script_output_protocol = "INSERT INTO xoken.script_output_protocol (proto_str, txid, fees, size, output_index, nominal_tx_index) VALUES (?, ?, ?, ?, ?, ?);";
-  CassSession* sess = getSession();
-  prepare(sess,&prepared_insert_txid_outputs,q_insert_txid_outputs);
-  prepare(sess,&prepared_select_txid_outputs,q_select_txid_outputs);
-  prepare(sess,&prepared_insert_tx,q_insert_tx);
-  prepare(sess,&prepared_insert_script_hash_outputs,q_insert_script_hash_outputs);
-  prepare(sess,&prepared_insert_script_hash_unspent_outputs,q_insert_script_hash_unspent_outputs);
-  prepare(sess,&prepared_delete_script_hash_unspent_outputs,q_delete_script_hash_unspent_outputs);
-  prepare(sess,&prepared_insert_script_output_protocol,q_insert_script_output_protocol);
+  ////CassSession* session = getSession();
+  prepare(session,&prepared_insert_txid_outputs,q_insert_txid_outputs);
+  prepare(session,&prepared_select_txid_outputs,q_select_txid_outputs);
+  prepare(session,&prepared_insert_tx,q_insert_tx);
+  prepare(session,&prepared_insert_script_hash_outputs,q_insert_script_hash_outputs);
+  prepare(session,&prepared_insert_script_hash_unspent_outputs,q_insert_script_hash_unspent_outputs);
+  prepare(session,&prepared_delete_script_hash_unspent_outputs,q_delete_script_hash_unspent_outputs);
+  prepare(session,&prepared_insert_script_output_protocol,q_insert_script_output_protocol);
 }
 
 void free_prepared(){
@@ -74,7 +146,7 @@ int insert_txid_outputs( const char* txid
                        , long value){ // Maybe Bool, Int32, Maybe Int64, Text
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
-  CassSession* sess = getSession();
+  ////CassSession* session = getSession();
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_txid_outputs);
 
@@ -119,8 +191,10 @@ CREATE TABLE xoken.txid_outputs (
   cass_tuple_set_int32(ott,1,(cass_int32_t)other1[i]);
   cass_tuple_set_tuple(ott, 2, ot2);
 
-  
   cass_collection_append_tuple(other,ott);
+    cass_tuple_free(ot1);
+  cass_tuple_free(ot2);
+  cass_tuple_free(ott);
   }
   cass_statement_bind_string(statement, 0, txid);
   cass_statement_bind_int32(statement, 1, (cass_int32_t)output_index);
@@ -130,7 +204,7 @@ CREATE TABLE xoken.txid_outputs (
   cass_statement_bind_tuple(statement, 5, block_info);
   cass_statement_bind_collection(statement, 6, other);
   cass_statement_bind_int64(statement, 7, (cass_int64_t)value);
-  future = cass_session_execute(sess, statement);
+  future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
@@ -143,9 +217,6 @@ CREATE TABLE xoken.txid_outputs (
 
   cass_future_free(future);
   cass_tuple_free(block_info);
-  cass_tuple_free(ot1);
-  cass_tuple_free(ot2);
-  cass_tuple_free(ott);
   cass_collection_free(other);
 
   return 0;
@@ -164,7 +235,7 @@ typedef struct TxIdOutputsResult_ TxIdOutputsResult;
 TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index){
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
-  CassSession* sess = getSession();
+  ////CassSession* session = getSession();
   const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=? AND is_recv=true;";
   CassFuture* future;
   statement = cass_prepared_bind(prepared_select_txid_outputs);
@@ -185,7 +256,7 @@ CREATE TABLE xoken.txid_outputs (
 
   cass_statement_bind_string(statement, 0, txid);
   cass_statement_bind_int32(statement, 1, (cass_int32_t)output_index);
-  future = cass_session_execute(sess, statement);
+  future = cass_session_execute(session, statement);
   cass_statement_free(statement);
 
   cass_future_wait(future);
@@ -226,7 +297,7 @@ int insert_tx( const char* tx_id
              , long fees){ // Maybe Bool, Int32, Maybe Int64, Text
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
-  CassSession* sess = getSession();
+  //CassSession* session = getSession();
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_tx);
 
@@ -266,16 +337,18 @@ CREATE TABLE xoken.transactions (
   cass_tuple_set_tuple(ott, 0, ot1);
   cass_tuple_set_int32(ott,1,(cass_int32_t)input1[i]);
   cass_tuple_set_tuple(ott, 2, ot2);
-
   
   cass_collection_append_tuple(inputs,ott);
+  cass_tuple_free(ot1);
+  cass_tuple_free(ot2);
+  cass_tuple_free(ott);
   }
   cass_statement_bind_string(statement, 0, tx_id);
   cass_statement_bind_tuple(statement, 1, block_info);
   cass_statement_bind_bytes(statement, 2, tx_serialized, tx_serialized_len);
   cass_statement_bind_collection(statement, 3, inputs);
   cass_statement_bind_int64(statement, 4, (cass_int64_t)fees);
-  future = cass_session_execute(sess, statement);
+  future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
@@ -288,9 +361,6 @@ CREATE TABLE xoken.transactions (
 
   cass_future_free(future);
   cass_tuple_free(block_info);
-  cass_tuple_free(ot1);
-  cass_tuple_free(ot2);
-  cass_tuple_free(ott);
   cass_collection_free(inputs);
 
   return 0;
@@ -304,7 +374,7 @@ int insert_script_hash_outputs( const char* script_hash
 { 
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
-  CassSession* sess = getSession();
+  //CassSession* session = getSession();
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_script_hash_outputs);
 
@@ -322,7 +392,7 @@ int insert_script_hash_outputs( const char* script_hash
   cass_statement_bind_string(statement, 0, script_hash);
   cass_statement_bind_int64(statement, 1, (cass_int64_t)nominal_tx_index);
   cass_statement_bind_tuple(statement, 2, output);
-  future = cass_session_execute(sess, statement);
+  future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
@@ -346,7 +416,7 @@ int insert_script_hash_unspent_outputs( const char* script_hash
 { 
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
-  CassSession* sess = getSession();
+  //CassSession* session = getSession();
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_script_hash_unspent_outputs);
 
@@ -362,7 +432,7 @@ int insert_script_hash_unspent_outputs( const char* script_hash
 
   cass_statement_bind_string(statement, 0, script_hash);
   cass_statement_bind_tuple(statement, 1, output);
-  future = cass_session_execute(sess, statement);
+  future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
@@ -385,7 +455,7 @@ int delete_script_hash_unspent_outputs( const char* script_hash
 { 
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
-  CassSession* sess = getSession();
+  ////CassSession* session = getSession();
   CassFuture* future;
   statement = cass_prepared_bind(prepared_delete_script_hash_unspent_outputs);
 
@@ -401,7 +471,7 @@ int delete_script_hash_unspent_outputs( const char* script_hash
 
   cass_statement_bind_string(statement, 0, script_hash);
   cass_statement_bind_tuple(statement, 1, output);
-  future = cass_session_execute(sess, statement);
+  future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {
@@ -427,7 +497,7 @@ int insert_script_output_protocol( const char* proto_str
 { 
   CassError rc = CASS_OK;
   CassStatement* statement = NULL;
-  CassSession* sess = getSession();
+  ////CassSession* session = getSession();
   CassFuture* future;
   statement = cass_prepared_bind(prepared_insert_script_output_protocol);
 
@@ -447,7 +517,7 @@ int insert_script_output_protocol( const char* proto_str
   cass_statement_bind_int32(statement, 4, (cass_int32_t)output_index);
   cass_statement_bind_int64(statement, 5, (cass_int64_t)nominal_tx_index);
 
-  future = cass_session_execute(sess, statement);
+  future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
   if (rc != CASS_OK) {

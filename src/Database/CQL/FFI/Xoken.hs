@@ -20,7 +20,8 @@ import Foreign.CStorable
 someFunc :: IO ()
 someFunc = 
     cassInit >>= print >>
-    insertTx "nohardcode" "bi" 12 51 "serialized_tx" [(("a", 5), 2, ("b", 13)), (("bda", 45), 21, ("bd", 11))] 110 >>= print -- >>runXCql-- >> runXCql
+    mapM_ (\h -> insertTx (show h) "bi" 12 51 "serialized_tx" [(("a", 5), 2, ("b", 13)), (("bda", 45), 21, ("bd", 11))] 110) [1..10] >>
+    freeAll -- >>runXCql-- >> runXCql
 
 {-
 conc :: IO ()
@@ -154,7 +155,11 @@ foreign import ccall "xoken.c insert_script_hash_outputs"
         -> IO CInt
 
 insertScriptHashOutput :: String -> Int64 -> String -> Int32 -> IO CInt
-insertScriptHashOutput sh nti outh outi = withCString sh $ \csh -> withCString outh $ \couth -> c_insert_script_hash_outputs csh (CLong nti) couth (CInt outi)
+insertScriptHashOutput sh nti outh outi =
+    withCString sh
+        $ \csh ->
+            withCString outh $ \couth ->
+                c_insert_script_hash_outputs csh (CLong nti) couth (CInt outi)
 
 foreign import ccall "xoken.c insert_script_hash_unspent_outputs"
     c_insert_script_hash_unspent_outputs
@@ -190,7 +195,7 @@ foreign import ccall "xoken.c insert_script_output_protocol"
 insertScriptOutputProtocol :: String -> String -> Int32 -> Int64 -> Int32 -> Int64 -> IO CInt
 insertScriptOutputProtocol proto_str txid oind fees size nti = withCString proto_str $ \p -> withCString txid $ \t -> c_insert_script_output_protocol p t  (CInt oind) (CLong fees) (CInt size) (CLong nti)
 
-foreign import ccall "bindings.c &session"
+foreign import ccall "xoken.c &session"
     session :: CassSessionPtr
 
 foreign import ccall "xoken.c prepare_all"
@@ -199,7 +204,7 @@ foreign import ccall "xoken.c prepare_all"
 foreign import ccall "xoken.c free_prepared"
     freePrepared :: IO ()
 
-foreign import ccall "bindings.c free_all"
+foreign import ccall "xoken.c free_all"
     freeAll :: IO ()
 
 cassFree :: IO ()
@@ -208,7 +213,7 @@ cassFree = freePrepared >> freeAll
 foreign import ccall "cassandra.h cass_session_new"
     cassSessionNew :: IO CassSessionPtr
 
-foreign import ccall "bindings.h init"
+foreign import ccall "xoken.h init"
     cInit :: IO CInt
 
 cassInit = cInit >> prepareAll
