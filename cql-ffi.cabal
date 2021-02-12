@@ -29,6 +29,7 @@ library
   exposed-modules:
       Lib
      ,Database.CQL.FFI.Xoken
+     ,Database.CQL.FFI.Exception
   other-modules:
       Paths_cql_ffi
   hs-source-dirs:

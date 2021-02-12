@@ -16,12 +16,14 @@ import qualified Data.ByteString.Lazy as B
 import GHC.Generics (Generic)
 import Foreign.Storable
 import Foreign.CStorable
+import Database.CQL.FFI.Exception
+import Control.Exception
 
 someFunc :: IO ()
-someFunc = 
-    cassInit >>= print >>
-    mapM_ (\h -> insertTx (show h) "bi" 12 51 "serialized_tx" [(("a", 5), 2, ("b", 13)), (("bda", 45), 21, ("bd", 11))] 110) [1..10] >>
-    freeAll -- >>runXCql-- >> runXCql
+someFunc = print getCassError
+    --cassInit >>= print >> getCassError >>= print >>
+    --mapM_ (\h -> insertTx (show h) "bi" 12 51 "serialized_tx" [(("a", 5), 2, ("b", 13)), (("bda", 45), 21, ("bd", 11))] 110) [1..10] >>
+    --freeAll -- >>runXCql-- >> runXCql
 
 {-
 conc :: IO ()
@@ -93,24 +95,31 @@ instance Storable TxIdOutputsResult where
 
 foreign import ccall "xoken.c select_txid_outputs"
     c_select_txid_outputs
-        :: CString
+        :: Ptr CInt
+        -> CString
         -> CInt
         -> IO (Ptr TxIdOutputsResult)
 
 selectTxIdOutputs :: String -> Int32 -> IO (Maybe (String, String, Int64))
 selectTxIdOutputs s i =
-    withCString s $ \ss -> do
-        txidrp <- c_select_txid_outputs ss (CInt i)
-        if txidrp == nullPtr
-            then return Nothing
-            else do
-                TxIdOutputsResult ad adl sh shl (CLong v) <- peek txidrp
-                ads <- peekCString ad
-                shs <- peekCString sh
-                --free ad
-                --free sh
-                free txidrp
-                return $ Just (ads, shs, v)
+    withCString s $ \ss -> alloca $ \rc -> do
+        poke rc (CInt (-1))
+        txidrp <- c_select_txid_outputs rc ss (CInt i)
+        (CInt rcv) <- peek rc
+        if rcv == 0
+            then
+                if txidrp == nullPtr
+                    then return Nothing
+                    else do
+                        TxIdOutputsResult ad adl sh shl (CLong v) <- peek txidrp
+                        ads <- peekCString ad
+                        shs <- peekCString sh
+                        --free ad
+                        --free sh
+                        free txidrp
+                        return $ Just (ads, shs, v)
+            else
+                throw (toEnum (fromIntegral rcv) :: CassError)
 
 foreign import ccall "xoken.c insert_tx"
     c_insert_tx
@@ -217,3 +226,9 @@ foreign import ccall "xoken.h init"
     cInit :: IO CInt
 
 cassInit = cInit >> prepareAll
+
+foreign import ccall "xoken.c cerr"
+    cerr :: CInt
+
+getCassError :: CassError
+getCassError = toEnum . fromIntegral $ cerr

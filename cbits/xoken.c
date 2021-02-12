@@ -207,22 +207,18 @@ CREATE TABLE xoken.txid_outputs (
   future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
-  if (rc != CASS_OK) {
-    print_error(future);
-    cass_statement_free(statement);
-    cass_future_free(future);
-    return -1;
-  }
+
   cass_statement_free(statement);
 
   cass_future_free(future);
   cass_tuple_free(block_info);
   cass_collection_free(other);
 
-  return 0;
+  return rc;
 }
 
 struct TxIdOutputsResult_ {
+  int res_code;
   const char* address;
   size_t address_len;
   const char* script_hash;
@@ -232,8 +228,8 @@ struct TxIdOutputsResult_ {
 
 typedef struct TxIdOutputsResult_ TxIdOutputsResult;
 
-TxIdOutputsResult* select_txid_outputs( const char* txid, int output_index){
-  CassError rc = CASS_OK;
+TxIdOutputsResult* select_txid_outputs(int* rc, const char* txid, int output_index){
+  //CassError rc = CASS_OK;
   CassStatement* statement = NULL;
   ////CassSession* session = getSession();
   const char* query = "SELECT address, script_hash, value FROM xoken.txid_outputs WHERE txid=? AND output_index=? AND is_recv=true;";
@@ -260,8 +256,8 @@ CREATE TABLE xoken.txid_outputs (
   cass_statement_free(statement);
 
   cass_future_wait(future);
-  rc = cass_future_error_code(future);
-  if (rc != CASS_OK) {
+  *rc = cass_future_error_code(future);
+  if (*rc != CASS_OK) {
     print_error(future);
     cass_future_free(future);
     return NULL;
@@ -351,19 +347,14 @@ CREATE TABLE xoken.transactions (
   future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
-  if (rc != CASS_OK) {
-    print_error(future);
-    cass_statement_free(statement);
-    cass_future_free(future);
-    return -1;
-  }
+
   cass_statement_free(statement);
 
   cass_future_free(future);
   cass_tuple_free(block_info);
   cass_collection_free(inputs);
 
-  return 0;
+  return rc;
 }
 
 
@@ -395,18 +386,12 @@ int insert_script_hash_outputs( const char* script_hash
   future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
-  if (rc != CASS_OK) {
-    print_error(future);
-    cass_statement_free(statement);
-    cass_future_free(future);
-    return -1;
-  }
 
   cass_statement_free(statement);
   cass_future_free(future);
   cass_tuple_free(output);
 
-  return 0;
+  return rc;
 }
 
 
@@ -435,18 +420,12 @@ int insert_script_hash_unspent_outputs( const char* script_hash
   future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
-  if (rc != CASS_OK) {
-    print_error(future);
-    cass_statement_free(statement);
-    cass_future_free(future);
-    return -1;
-  }
 
   cass_future_free(future);
   cass_statement_free(statement);
   cass_tuple_free(output);
 
-  return 0;
+  return rc;
 }
 
 int delete_script_hash_unspent_outputs( const char* script_hash
@@ -474,18 +453,12 @@ int delete_script_hash_unspent_outputs( const char* script_hash
   future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
-  if (rc != CASS_OK) {
-    print_error(future);
-    cass_statement_free(statement);
-    cass_future_free(future);
-    return -1;
-  }
 
   cass_future_free(future);
   cass_statement_free(statement);
   cass_tuple_free(output);
 
-  return 0;
+  return rc;
 }
 
 int insert_script_output_protocol( const char* proto_str
@@ -520,15 +493,13 @@ int insert_script_output_protocol( const char* proto_str
   future = cass_session_execute(session, statement);
   cass_future_wait(future);
   rc = cass_future_error_code(future);
-  if (rc != CASS_OK) {
-    print_error(future);
-    cass_statement_free(statement);
-    cass_future_free(future);
-    return -1;
-  }
 
   cass_statement_free(statement);
   cass_future_free(future);
 
-  return 0;
+  return rc;
+}
+
+int cerr(){
+  return CASS_ERROR_LIB_REQUEST_QUEUE_FULL;
 }
